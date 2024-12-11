@@ -1,0 +1,10 @@
+[manifest]
+name = "defi_monitor"
+
+
+[[event]]
+name = "transfer_public"
+program = "credits.aleo"
+description = "Transfer public monitor"
+function = "transfer_public"
+actions = ["Notify"]

@@ -1,0 +1,102 @@
+[package]
+name = "zk-decision"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies.snarkvm]
+version = "=1.1.0"
+features = [ "circuit", "console", "rocks" ]
+
+[dependencies.anyhow]
+version= "1.0.79"
+
+[dependencies.async-trait]
+version= "0.1"
+
+[dependencies.axum]
+version = "0.7"
+
+[dependencies.axum-extra]
+version = "0.9.0"
+features = [ "erased-json", "typed-header" ]
+
+[dependencies.claims]
+version = "0.8.0"
+
+[dependencies.dotenv]
+version = "0.15.0"
+[depdencies.env_logger]
+version = "0.11.5"
+
+[dependencies.indexmap]
+version = "2.5.0"
+
+[dependencies.jsonwebtoken]
+version = "9.2"
+
+[dependencies.once_cell]
+version = "1.19"
+
+[dependencies.percent-encoding]
+version = "2.3.1"
+
+[dependencies.phantom-data]
+version = "0.0.1"
+
+[dependencies.rayon]
+version = "1.10.0"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.parking_lot]
+version = "0.12"
+
+[dependencies.serde]
+version = "1.0"
+default-features = false
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1.0.128"
+
+[dependencies.sqlx]
+version = "0.7.0"
+features = ["runtime-tokio", "tls-native-tls", "postgres", "migrate", "json"]
+
+[dependencies.time]
+version = "0.3"
+
+[dependencies.tokio]
+version = "1.40.0"
+features = ["full"]
+
+[dependencies.tower]
+version = "0.4"
+
+[dependencies.tower-http]
+version = "0.5"
+features = [ "cors", "trace" ]
+
+[dependencies.tower_governor]
+version = "0.3"
+
+[dependencies.tracing]
+version = "0.1"
+
+[dev-dependencies.aleo-std]
+version = "0.1.24"
+
+[dev-dependencies.lazy_static]
+version = "1.5.0"
+
+[dev-dependencies.reqwest]
+version = "0.12.9"
+features = ["blocking", "rustls-tls"]
+
+[dev-dependencies.tracing-subscriber]
+version = "0.3.18"
+features = ["env-filter"]
+
+[dev-dependencies.zip]
+version = "2.2.0"
