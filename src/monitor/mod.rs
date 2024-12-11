@@ -22,11 +22,13 @@ pub struct Monitor<N: Network, C: ConsensusStorage<N>> {
 impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
     /// Create a new monitor object.
     pub fn new(ledger: Ledger<N, C>) -> Self {
+        let latest_block = ledger.latest_height();
         Self {
             ledger,
-            latest_block: Arc::new(AtomicU32::new(0)),
+            latest_block: Arc::new(AtomicU32::new(latest_block)),
             subscriptions: Arc::new(Mutex::new(Vec::new())),
             matching_events: Arc::new(Mutex::new(IndexMap::new())),
+            join_handles: Arc::new(Mutex::new(Default::default())),
         }
     }
 
@@ -51,13 +53,13 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
     /// Start the monitor.
     pub async fn start_monitor(&self) {
         let self_ = self.clone();
-        let task = tokio::task::spawn(|latest| async move {
+        let task = tokio::task::spawn(async move {
             loop {
                 if self_.ledger.latest_height() > self_.latest_block.load(Ordering::Relaxed) {
                     let latest_height = self_.ledger().latest_height();
-                    for height in (self_.latest_block + 1)..(latest_height + 1) {
-                        for subscription in self.subscriptions.lock().iter() {
-                            let transactions = self.ledger.get_transactions(latest_height).unwrap();
+                    for height in (latest_height + 1)..(latest_height + 1) {
+                        for subscription in self_.subscriptions.lock().iter() {
+                            let transactions = self_.ledger.get_transactions(latest_height).unwrap();
                             for transaction in transactions.iter() {
                                 for transition in transaction.transitions() {
                                     for event in subscription.events().iter() {
@@ -78,7 +80,7 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                                                 None,
                                             );
                                             if let Some(payloads) =
-                                                self.matching_events.lock().get_mut(subscription.id())
+                                                self_.matching_events.lock().get_mut(subscription.id())
                                             {
                                                 payloads.push(payload);
                                             }
@@ -87,11 +89,12 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                                 }
                             }
                         }
+                        self_.latest_block.store(height, Ordering::Relaxed);
                     }
                 }
                 sleep(Duration::from_millis(200)).await
             }
-        };
+        });
         self.join_handles.lock().push(task);
     }
 }
