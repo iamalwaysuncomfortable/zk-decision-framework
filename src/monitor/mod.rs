@@ -5,15 +5,18 @@ use snarkvm::ledger::store::ConsensusStorage;
 use snarkvm::ledger::Ledger;
 use snarkvm::prelude::{Itertools, Network};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
 #[derive(Clone)]
 pub struct Monitor<N: Network, C: ConsensusStorage<N>> {
     ledger: Ledger<N, C>,
-    latest_block: u32,
+    latest_block: Arc<AtomicU32>,
     subscriptions: Arc<Mutex<Vec<Subscription<N>>>>,
     #[allow(clippy::type_complexity)]
     matching_events: Arc<Mutex<IndexMap<SubscriptionID<N>, Vec<EventPayLoad<N>>>>>,
+    join_handles: Arc<Mutex<Vec<JoinHandle<()>>>>
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
@@ -21,7 +24,7 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
     pub fn new(ledger: Ledger<N, C>) -> Self {
         Self {
             ledger,
-            latest_block: 0,
+            latest_block: Arc::new(AtomicU32::new(0)),
             subscriptions: Arc::new(Mutex::new(Vec::new())),
             matching_events: Arc::new(Mutex::new(IndexMap::new())),
         }
@@ -47,35 +50,38 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
 
     /// Start the monitor.
     pub async fn start_monitor(&self) {
-        loop {
-            if self.ledger.latest_height() > self.latest_block {
-                let latest_height = self.ledger().latest_height();
-                for height in (self.latest_block + 1)..(latest_height + 1) {
-                    for subscription in self.subscriptions.lock().iter() {
-                        let transactions = self.ledger.get_transactions(latest_height).unwrap();
-                        for transaction in transactions.iter() {
-                            for transition in transaction.transitions() {
-                                for event in subscription.events().iter() {
-                                    let program_id = &event.program_id;
-                                    let function_name = &event.function;
-                                    if transition.program_id() == program_id
-                                        && transition.function_name() == function_name
-                                    {
-                                        let payload = EventPayLoad::new(
-                                            event.name.clone(),
-                                            event.description.clone(),
-                                            *program_id,
-                                            height,
-                                            *function_name,
-                                            transaction.id(),
-                                            *transition.id(),
-                                            None,
-                                            None,
-                                        );
-                                        if let Some(payloads) =
-                                            self.matching_events.lock().get_mut(subscription.id())
+        let self_ = self.clone();
+        let task = tokio::task::spawn(|latest| async move {
+            loop {
+                if self_.ledger.latest_height() > self_.latest_block.load(Ordering::Relaxed) {
+                    let latest_height = self_.ledger().latest_height();
+                    for height in (self_.latest_block + 1)..(latest_height + 1) {
+                        for subscription in self.subscriptions.lock().iter() {
+                            let transactions = self.ledger.get_transactions(latest_height).unwrap();
+                            for transaction in transactions.iter() {
+                                for transition in transaction.transitions() {
+                                    for event in subscription.events().iter() {
+                                        let program_id = &event.program_id;
+                                        let function_name = &event.function;
+                                        if transition.program_id() == program_id
+                                            && transition.function_name() == function_name
                                         {
-                                            payloads.push(payload);
+                                            let payload = EventPayLoad::new(
+                                                event.name.clone(),
+                                                event.description.clone(),
+                                                *program_id,
+                                                height,
+                                                *function_name,
+                                                transaction.id(),
+                                                *transition.id(),
+                                                None,
+                                                None,
+                                            );
+                                            if let Some(payloads) =
+                                                self.matching_events.lock().get_mut(subscription.id())
+                                            {
+                                                payloads.push(payload);
+                                            }
                                         }
                                     }
                                 }
@@ -83,8 +89,9 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                         }
                     }
                 }
+                sleep(Duration::from_millis(200)).await
             }
-            sleep(Duration::from_millis(200)).await
-        }
+        };
+        self.join_handles.lock().push(task);
     }
 }
