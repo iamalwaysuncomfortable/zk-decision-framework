@@ -71,7 +71,7 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                         for subscription in self_.subscriptions.lock().iter() {
                             let subscription_id = subscription.id();
                             info!("Getting events for subscription id {subscription_id}");
-                            let transactions = self_.ledger.get_transactions(latest_height).unwrap();
+                            let transactions = self_.ledger.get_transactions(height).unwrap();
                             for transaction in transactions.iter() {
                                 info!("Transaction {transaction:?} being searched");
                                 for transition in transaction.transitions() {
