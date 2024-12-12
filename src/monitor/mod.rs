@@ -40,13 +40,19 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
 
     /// Add subscription.
     pub fn add(&mut self, subscription: Subscription<N>) {
+        info!("Adding subscription {subscription:?}");
         self.subscriptions.lock().push(subscription)
     }
 
     /// Drain subscriptions.
     pub fn drain(&mut self, id: SubscriptionID<N>) -> (SubscriptionID<N>, Vec<EventPayLoad<N>>) {
+        info!("Getting all events for subscription {id}");
         match self.matching_events.lock().get_full_mut(&id) {
-            Some((_, id, events)) => (*id, events.drain(..).collect_vec()),
+            Some((_, id, events)) => {
+                let num_events = events.len();
+                info!("{num_events} events found");
+                (*id, events.drain(0..num_events).collect_vec())
+            },
             None => (id, vec![]),
         }
     }
