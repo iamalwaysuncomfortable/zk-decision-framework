@@ -8,3 +8,5 @@ program = "credits.aleo"
 description = "Transfer public monitor"
 function = "transfer_public"
 actions = ["Notify"]
+
+curl -X POST http://0.0.0.0:6035/mainnet/subscribe -H "Content-Type: application/json" -d '{ "name":"transfer_public", "program" }'

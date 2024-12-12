@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
+use tracing::info;
 
 #[derive(Clone)]
 pub struct Monitor<N: Network, C: ConsensusStorage<N>> {
@@ -58,13 +59,18 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                 if self_.ledger.latest_height() > self_.latest_block.load(Ordering::Relaxed) {
                     let latest_height = self_.ledger().latest_height();
                     for height in (latest_height + 1)..(latest_height + 1) {
+                        info!("Getting events for height {height}");
                         for subscription in self_.subscriptions.lock().iter() {
+                            let subscription_id = subscription.id();
+                            info!("Getting events for subscription id {subscription_id}");
                             let transactions = self_.ledger.get_transactions(latest_height).unwrap();
                             for transaction in transactions.iter() {
+                                info!("Transaction {transaction:?} being searched");
                                 for transition in transaction.transitions() {
                                     for event in subscription.events().iter() {
-                                        let program_id = &event.program_id;
+                                        let program_id = &event.program;
                                         let function_name = &event.function;
+                                        info!("Searching for program {program_id} and function {function_name}");
                                         if transition.program_id() == program_id
                                             && transition.function_name() == function_name
                                         {

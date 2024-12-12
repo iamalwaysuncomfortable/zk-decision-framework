@@ -34,7 +34,7 @@ impl<N: Network, C: ConsensusStorage<N>> MonitorRestService<N, C> {
         ))
     }
 
-    /// POST /<network>/subscription_id
+    /// POST /<network>/events
     pub(crate) async fn get_events(
         State(rest): State<Self>,
         Json(id): Json<SubscriptionID<N>>,

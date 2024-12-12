@@ -118,7 +118,7 @@ impl<N: Network, C: ConsensusStorage<N>> MonitorRestService<N, C> {
                     &format!("/{network}/subscribe"),
                     post(Self::start_subscription),
                 )
-                .route(&format!("/{network}/get/:id"), post(Self::get_events));
+                .route(&format!("/{network}/events"), post(Self::get_events));
 
             routes
                 // Pass in `Rest` to make things convenient.
