@@ -66,8 +66,7 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                 let latest_tracked_block = self_.latest_block.load(Ordering::Relaxed);
                 info!("Latest ledger height {latest_ledger_height} latest tracked block {latest_tracked_block}");
                 if self_.ledger.latest_height() > self_.latest_block.load(Ordering::Relaxed) {
-                    let latest_height = self_.ledger().latest_height();
-                    for height in (latest_height + 1)..(latest_height + 1) {
+                    for height in (latest_tracked_block + 1)..(latest_ledger_height + 1) {
                         info!("Getting events for height {height}");
                         for subscription in self_.subscriptions.lock().iter() {
                             let subscription_id = subscription.id();
