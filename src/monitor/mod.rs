@@ -4,8 +4,8 @@ use parking_lot::Mutex;
 use snarkvm::ledger::store::ConsensusStorage;
 use snarkvm::ledger::Ledger;
 use snarkvm::prelude::{Itertools, Network};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 use tracing::info;
@@ -17,7 +17,7 @@ pub struct Monitor<N: Network, C: ConsensusStorage<N>> {
     subscriptions: Arc<Mutex<Vec<Subscription<N>>>>,
     #[allow(clippy::type_complexity)]
     matching_events: Arc<Mutex<IndexMap<SubscriptionID<N>, Vec<EventPayLoad<N>>>>>,
-    join_handles: Arc<Mutex<Vec<JoinHandle<()>>>>
+    join_handles: Arc<Mutex<Vec<JoinHandle<()>>>>,
 }
 
 impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
@@ -41,6 +41,9 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
     /// Add subscription.
     pub fn add(&mut self, subscription: Subscription<N>) {
         info!("Adding subscription {subscription:?}");
+        self.matching_events
+            .lock()
+            .insert(*subscription.id(), vec![]);
         self.subscriptions.lock().push(subscription)
     }
 
@@ -52,7 +55,7 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                 let num_events = events.len();
                 info!("{num_events} events found");
                 (*id, events.drain(0..num_events).collect_vec())
-            },
+            }
             None => (id, vec![]),
         }
     }
@@ -78,7 +81,9 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                                     for event in subscription.events().iter() {
                                         let program_id = &event.program;
                                         let function_name = &event.function;
-                                        info!("Searching for program {program_id} and function {function_name}");
+                                        let transition_program = transition.program_id();
+                                        let transition_function = transition.function_name();
+                                        info!("Search program: {program_id}-Transition program: {transition_program}\nSearch function:{function_name}-Transition function:{transition_function}");
                                         if transition.program_id() == program_id
                                             && transition.function_name() == function_name
                                         {
@@ -93,9 +98,13 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
                                                 None,
                                                 None,
                                             );
-                                            if let Some(payloads) =
-                                                self_.matching_events.lock().get_mut(subscription.id())
+                                            let subscription_id = subscription.id();
+                                            if let Some(payloads) = self_
+                                                .matching_events
+                                                .lock()
+                                                .get_mut(subscription_id)
                                             {
+                                                info!("Adding event {payload:?} to subscription {subscription_id}");
                                                 payloads.push(payload);
                                             }
                                         }
