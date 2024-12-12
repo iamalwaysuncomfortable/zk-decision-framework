@@ -62,6 +62,9 @@ impl<N: Network, C: ConsensusStorage<N>> Monitor<N, C> {
         let self_ = self.clone();
         let task = tokio::task::spawn(async move {
             loop {
+                let latest_ledger_height = self_.ledger.latest_height();
+                let latest_tracked_block = self_.latest_block.load(Ordering::Relaxed);
+                info!("Latest ledger height {latest_ledger_height} latest tracked block {latest_tracked_block}");
                 if self_.ledger.latest_height() > self_.latest_block.load(Ordering::Relaxed) {
                     let latest_height = self_.ledger().latest_height();
                     for height in (latest_height + 1)..(latest_height + 1) {
